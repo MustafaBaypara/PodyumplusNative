@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1084114362398",
+    "project_id": "podyumplus-afae7",
+    "storage_bucket": "podyumplus-afae7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1084114362398:android:e979a847d3f53be2e90e0f",
+        "android_client_info": {
+          "package_name": "com.podyumplus"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDimbHOUY_bwQhBbGC8S2x27_Nspk7VymY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
