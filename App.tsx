@@ -5,10 +5,6 @@ import {
   Platform, 
   StyleSheet, 
   Alert, 
-  ActivityIndicator,
-  View,
-  Image,
-  NativeEventEmitter,
   NativeModules
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
