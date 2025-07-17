@@ -16,7 +16,7 @@ import i18n from './i18n';
 
 const BASE_URL = 'https://podyumplus.com';
 const ONESIGNAL_APP_ID = '2be5d1bc-7fcd-4b85-9724-589db662bcd5';
-const WHATSAPP_PHONE = '905468911593';
+const WHATSAPP_PHONE = '908503468976';
 const WHATSAPP_MESSAGE = "Merhaba,\nwww.podyumplus.com'dan sipariş vermek istiyorum.";
 
 export default function App() {
@@ -75,6 +75,34 @@ export default function App() {
         expires: '2030-12-31T23:59:59.00Z',
       });
 
+// Bildirim tıklama handler'ını ekle
+      OneSignal.Notifications.addEventListener('click', (event: any) => {
+        console.log('OneSignal notification clicked:', event);
+        
+        // Bildirim verilerini kontrol et
+        const notification = event.notification;
+        const additionalData: Record<string, any> = notification?.additionalData || {};
+        
+        // Custom URL'yi kontrol et
+        if (additionalData.customURL && typeof additionalData.customURL === 'string') {
+          const customUrl: string = additionalData.customURL;
+          console.log('Custom URL found:', customUrl);
+          
+          // URL'yi parametrelerle birlikte oluştur
+          const urlWithParams = buildUrl(customUrl, finalId);
+          
+          // WebView'a yönlendir
+          setCurrentUrl(urlWithParams);
+        } else if (notification?.launchURL && typeof notification?.launchURL === 'string') {
+          // Alternatif olarak 'url' key'ini kontrol et
+          const customUrl: string = notification?.launchURL;
+          console.log('Launch URL found:', customUrl);
+          
+          const urlWithParams = buildUrl(customUrl, finalId);
+          setCurrentUrl(urlWithParams);
+        }
+      });
+
     } catch (error) {
       console.error('OneSignal initialization error:', error);
       setOneSignalId('0');
@@ -83,18 +111,18 @@ export default function App() {
 
   // URL builder fonksiyonu
   const buildUrl = useCallback((baseUrl: string, onesignalId: string): string => {
-  try {
-    const url = new URL(baseUrl);
-    url.searchParams.set('app', '1');
-    url.searchParams.set('onesignal_id', onesignalId);
-    return url.toString();
-  } catch {
-    // fallback
-    return baseUrl.includes('?')
-      ? `${baseUrl}&app=1&onesignal_id=${onesignalId}`
-      : `${baseUrl}?app=1&onesignal_id=${onesignalId}`;
-  }
-}, []);
+    try {
+      const url = new URL(baseUrl);
+      url.searchParams.set('app', '1');
+      url.searchParams.set('onesignal_id', onesignalId);
+      return url.toString();
+    } catch {
+      // fallback
+      return baseUrl.includes('?')
+        ? `${baseUrl}&app=1&onesignal_id=${onesignalId}`
+        : `${baseUrl}?app=1&onesignal_id=${onesignalId}`;
+    }
+  }, []);
 
   // Deep link handler
   const handleDeepLink = useCallback((url: string) => {
@@ -111,16 +139,55 @@ export default function App() {
     return false;
   }, [canGoBack]);
 
-  // WhatsApp handler
+  // WhatsApp handler - URL'den telefon numarası ve mesajı alır
   const handleWhatsAppLink = useCallback(async (url: string) => {
-    const whatsappURL = `whatsapp://send?phone=${WHATSAPP_PHONE}&text=${encodeURIComponent(WHATSAPP_MESSAGE)}`;
-    
     try {
+      // URL'yi manuel olarak parse et
+      const queryStart = url.indexOf('?');
+      if (queryStart === -1) {
+        console.warn('WhatsApp link has no query parameters');
+        return;
+      }
+      
+      const queryString = url.substring(queryStart + 1);
+      const params = new Map<string, string>();
+      
+      // Query parametrelerini parse et
+      queryString.split('&').forEach(param => {
+        const [key, value] = param.split('=');
+        if (key && value) {
+          params.set(key, value);
+        }
+      });
+      
+      // Phone ve text parametrelerini al
+      const phone = params.get('phone');
+      const text = params.get('text');
+      
+      // Parametreler yoksa işlem yapma
+      if (!phone || !text) {
+        console.warn('WhatsApp link missing required parameters (phone or text)');
+        return;
+      }
+      
+      // Telefon numarasındaki + işaretini kaldır (WhatsApp app link için)
+      const cleanPhone = decodeURIComponent(phone).replace(/^\+/, '');
+      
+      // Mesajı decode et
+      const decodedText = decodeURIComponent(text);
+      
+      // WhatsApp app link'i oluştur
+      const whatsappURL = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(decodedText)}`;
+      
+      // WhatsApp app'in yüklü olup olmadığını kontrol et
       const supported = await Linking.canOpenURL(whatsappURL);
+      
       if (supported) {
+        // WhatsApp app'i aç
         await Linking.openURL(whatsappURL);
       } else {
-        await Linking.openURL(`https://api.whatsapp.com/send?phone=${WHATSAPP_PHONE}&text=${encodeURIComponent(WHATSAPP_MESSAGE)}`);
+        // WhatsApp app yüklü değilse web versiyonunu aç
+        await Linking.openURL(`https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(decodedText)}`);
       }
     } catch (error) {
       console.error('WhatsApp link error:', error);
@@ -208,10 +275,6 @@ export default function App() {
     initializeOneSignal();
   }, [initializeOneSignal]);
 
-  //   useEffect(() => {
-  //   console.log('currentUrl:', currentUrl);
-  // }, [currentUrl]);
-
   // Back handler effect
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
@@ -271,6 +334,7 @@ export default function App() {
         javaScriptEnabled={true}
         allowsBackForwardNavigationGestures={true}
         pullToRefreshEnabled={true}
+        sharedCookiesEnabled={true}
       />
     </SafeAreaView>
   );
